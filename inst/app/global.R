@@ -481,7 +481,9 @@ options(
         tabPanel("View radiant state", uiOutput("state_view"), icon = icon("user")),
         "----", "Local",
         tabPanel(downloadLink("state_download", tagList(icon("download"), "Download radiant state file"))),
-        tabPanel(actionLink("state_upload_link", "Upload radiant state file", icon = icon("upload")))
+        tabPanel(actionLink("state_upload_link", "Upload radiant state file", icon = icon("upload"))),
+        "----",
+        tabPanel(actionLink("storageNav", "Storage space", icon = icon("hdd-o")))
       ),
 
       ## stop app *and* close browser window

@@ -878,3 +878,11 @@ if (length(getOption("radiant.autosave", default = NULL) > 0)) {
     }
   )
 }
+
+# QUBES
+
+# Observe change in storage_location
+
+observeEvent(input$storage_location, {
+  cat(paste(getOption("radiant.project_dir"),"\n"))
+})
