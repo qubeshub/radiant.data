@@ -236,15 +236,15 @@ output$ui_rmd_save_type <- renderUI({
 
 conditional_save_report <- function(id) {
   if (isTRUE(getOption("radiant.report"))) {
-    download_button(id, "Save report", class = "btn-primary")
+    download_button(id) # , "Save report", class = "btn-primary")
   } else {
     invisible()
   }
 }
 
-conditional_read_files <- function(id) {
-  if (getOption("radiant.shinyFiles", FALSE)) {
-    download_button(id, "Read files", class = "btn-primary")
+conditional_read_files <- function(id, on_server = FALSE) {
+  if (on_server %||% FALSE) {
+    download_button(id) # , "Read files", class = "btn-primary")
   } else {
     invisible()
   }
@@ -256,24 +256,23 @@ output$ui_rmd_load <- renderUI({
     accept = c(".Rmd", ".rmd", ".md", ".html"),
     buttonLabel = "Load report",
     title = "Load report",
-    class = "btn-default"
+    class = "btn-default",
+    on_server = on_server()
   )
 })
 
-if (getOption("radiant.shinyFiles", FALSE)) {
-  output$ui_rmd_read_files <- renderUI({
-    shinyFiles::shinyFilesButton(
-      "rmd_read_files", "Read files", "Generate code to read selected file",
-      multiple = FALSE, icon = icon("book"), class = "btn-primary"
-    )
-  })
-  sf_rmd_read_files <- shinyFiles::shinyFileChoose(
-    input = input,
-    id = "rmd_read_files",
-    session = session,
-    roots = sf_volumes
+output$ui_rmd_read_files <- renderUI({
+  shinyFiles::shinyFilesButton(
+    "rmd_read_files", "Read files", "Generate code to read selected file",
+    multiple = FALSE, icon = icon("book"), class = "btn-primary"
   )
-}
+})
+sf_rmd_read_files <- shinyFiles::shinyFileChoose(
+  input = input,
+  id = "rmd_read_files",
+  session = session,
+  roots = sf_volumes
+)
 
 radiant_auto <- reactive({
   if (any(grepl("package:radiant", search()))) {
@@ -329,7 +328,7 @@ output$report_rmd <- renderUI({
         td(uiOutput("ui_rmd_save_type")),
         td(conditional_save_report("rmd_save"), style = "padding-top:5px;"),
         td(uiOutput("ui_rmd_load"), style = "padding-top:5px;"),
-        td(conditional_read_files("rmd_read_files"), style = "padding-top:5px;"),
+        td(conditional_read_files("rmd_read_files", on_server()), style = "padding-top:5px;"),
         td(actionButton("rmd_clear", "Clear output", icon = icon("trash"), class = "btn-danger"), style = "padding-top:5px;")
       )
     ),
@@ -479,7 +478,7 @@ download_handler(
 
 observeEvent(input$rmd_load, {
   ## loading report from disk
-  if (getOption("radiant.shinyFiles", FALSE)) {
+  if (on_server()) {
     if (is.integer(input$rmd_load)) return()
     inFile <- shinyFiles::parseFilePaths(sf_volumes, input$rmd_load)
     if (nrow(inFile) == 0) return()
@@ -507,7 +506,7 @@ observeEvent(input$rmd_load, {
       }
     } else {
       rmd <- paste0(readLines(pp$path), collapse = "\n")
-      if (getOption("radiant.shinyFiles", FALSE)) {
+      if (on_server()) {
         r_state$radiant_rmd_name <<- pp$path
       } else {
         r_state$radiant_rmd_name <<- pp$filename

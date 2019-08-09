@@ -4,19 +4,20 @@
 observeEvent(input$storageNav, {
   showModal(
     modalDialog(
-      radioButtons(inputId = "storage_location", label = "Storage location:",
+      radioButtons(inputId = "on_server", label = "Storage location:",
                    choiceNames = list(
                      HTML("<i class='fa fa-cloud'></i><span style='padding-left: 5px;'>QUBES</span>"),
                      HTML("<i class='fa fa-hdd-o'></i><span style='padding-left: 5px;'>Computer</span>")
                    ),
                    choiceValues = list(
-                     "server",
-                     "client"
+                     "TRUE",
+                     "FALSE"
                    ),
-                   selected = state_init("storage_location", "client")),
+                   selected = state_init("on_server", "FALSE")),
       size = c("s"),
       easyClose = TRUE,
       footer = modalButton("Dismiss")
     )
   )
 })
+

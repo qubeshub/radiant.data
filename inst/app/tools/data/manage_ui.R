@@ -3,7 +3,7 @@
 #######################################
 
 output$ui_state_load <- renderUI({
-  if (getOption("radiant.shinyFiles", FALSE)) {
+  if (on_server()) {
     tagList(
       HTML("<label>Load radiant state file:</label></br>"),
       shinyFiles::shinyFilesButton(
@@ -16,8 +16,8 @@ output$ui_state_load <- renderUI({
   }
 })
 
-make_uploadfile <- function(accept) {
-  if (getOption("radiant.shinyFiles", FALSE)) {
+make_uploadfile <- function(accept, on_server = FALSE) {
+  if (on_server %||% FALSE) {
     shinyFiles::shinyFilesButton("uploadfile", "Load", "Load data", multiple = TRUE, icon = icon("upload"))
   } else {
     fileInput("uploadfile", NULL, multiple = TRUE, accept = accept)
@@ -31,12 +31,13 @@ output$ui_fileUpload <- renderUI({
       accept = c(
         "text/csv", "text/comma-separated-values",
         "text/tab-separated-values", "text/plain", ".csv", ".tsv"
-      )
+      ),
+      on_server()
     )
   } else if (input$dataType %in% c("rda", "rds")) {
-    make_uploadfile(accept = c(".rda", ".rds", ".rdata"))
+    make_uploadfile(accept = c(".rda", ".rds", ".rdata"), on_server())
   } else if (input$dataType == "feather") {
-    make_uploadfile(accept = ".feather")
+    make_uploadfile(accept = ".feather", on_server())
   } else if (input$dataType == "url_rds") {
     with(tags, table(
       tr(
@@ -240,7 +241,7 @@ output$ui_Manage <- renderUI({
         condition = "input.saveAs != 'clipboard' &&
                      input.saveAs != 'state' &&
                      input.saveAs != 'to_global'",
-        download_button("man_save_data", "Save", ic = "download")
+        download_button("man_save_data") # , "Save", ic = "download")
       )
     ),
     wellPanel(
@@ -383,41 +384,39 @@ man_save_data <- function(file) {
   })
 }
 
-if (getOption("radiant.shinyFiles", FALSE)) {
-  sf_filetypes <- function() {
-    if (length(input$dataType) == 0) {
-      ""
-    } else if (input$dataType == "csv") {
-      c("csv", "tsv")
-    } else if (input$dataType %in% c("rda", "rds")) {
-      c("rda", "rds", "rdata")
-    } else if (input$dataType == "feather") {
-      "feather"
-    } else {
-      ""
-    }
+sf_filetypes <- function() {
+  if (length(input$dataType) == 0) {
+    ""
+  } else if (input$dataType == "csv") {
+    c("csv", "tsv")
+  } else if (input$dataType %in% c("rda", "rds")) {
+    c("rda", "rds", "rdata")
+  } else if (input$dataType == "feather") {
+    "feather"
+  } else {
+    ""
   }
-
-  sf_uploadfile <- shinyFiles::shinyFileChoose(
-    input = input,
-    id = "uploadfile",
-    session = session,
-    roots = sf_volumes,
-    filetype = sf_filetypes
-  )
-
-  sf_state_load <- shinyFiles::shinyFileChoose(
-    input = input,
-    id = "state_load",
-    session = session,
-    roots = sf_volumes,
-    filetype = c("rda", "state.rda")
-  )
-} else {
-  output$ui_state_save <- renderUI({
-    download_button("state_save", "Save", ic = "download")
-  })
 }
+
+sf_uploadfile <- shinyFiles::shinyFileChoose(
+  input = input,
+  id = "uploadfile",
+  session = session,
+  roots = sf_volumes,
+  filetype = sf_filetypes
+)
+
+sf_state_load <- shinyFiles::shinyFileChoose(
+  input = input,
+  id = "state_load",
+  session = session,
+  roots = sf_volumes,
+  filetype = c("rda", "state.rda")
+)
+
+output$ui_state_save <- renderUI({
+  download_button("state_save") # , "Save", ic = "download")
+})
 
 state_name_dlh <- function() state_name(full.name = FALSE)
 
@@ -449,7 +448,7 @@ download_handler(
 )
 
 observeEvent(input$uploadfile, {
-  if (getOption("radiant.shinyFiles", FALSE)) {
+  if (on_server()) {
     if (is.integer(input$uploadfile)) return()
     inFile <- shinyFiles::parseFilePaths(sf_volumes, input$uploadfile)
     if (nrow(inFile) == 0) return()
@@ -653,7 +652,7 @@ output$refreshOnLoad <- renderUI({
   req(pressed(input$state_load) || pressed(input$state_upload))
 
   if (pressed(input$state_load)) {
-    if (getOption("radiant.shinyFiles", FALSE)) {
+    if (isolate(on_server()) %||% FALSE) {
       if (is.integer(input$state_load)) return()
       path <- shinyFiles::parseFilePaths(sf_volumes, input$state_load)
       if (inherits(path, "try-error") || is_empty(path$datapath)) return()
@@ -872,7 +871,7 @@ output$man_summary <- renderPrint({
 })
 
 man_show_log <- reactive({
-  if (getOption("radiant.shinyFiles", FALSE)) {
+  if (isolate(on_server()) %||% FALSE) {
     lcmd <- r_info[[paste0(input$dataset, "_lcmd")]]
     cmd <- ""
     if (!is_empty(lcmd)) {
@@ -928,7 +927,7 @@ man_show_log_modal <- function() {
 }
 
 observeEvent(input$manage_report, {
-  if (getOption("radiant.shinyFiles", FALSE)) {
+  if (on_server()) {
     update_report(cmd = man_show_log(), outputs = NULL, figs = FALSE)
   } else {
     man_show_log_modal()

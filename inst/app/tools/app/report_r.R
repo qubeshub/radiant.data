@@ -190,25 +190,23 @@ output$ui_r_load <- renderUI({
     accept = c(".R", ".r", ".html"),
     buttonLabel = "Load report",
     title = "Load report",
-    class = "btn-default"
-
+    class = "btn-default",
+    on_server = on_server()
   )
 })
 
-if (getOption("radiant.shinyFiles", FALSE)) {
-  output$ui_r_read_files <- renderUI({
-    shinyFiles::shinyFilesButton(
-      "r_read_files", "Read files", "Generate code to read selected file",
-      multiple = FALSE, icon = icon("book"), class = "btn-primary"
-    )
-  })
-  sf_r_read_files <- shinyFiles::shinyFileChoose(
-    input = input,
-    id = "r_read_files",
-    session = session,
-    roots = sf_volumes
+output$ui_r_read_files <- renderUI({
+  shinyFiles::shinyFilesButton(
+    "r_read_files", "Read files", "Generate code to read selected file",
+    multiple = FALSE, icon = icon("book"), class = "btn-primary"
   )
-}
+})
+sf_r_read_files <- shinyFiles::shinyFileChoose(
+  input = input,
+  id = "r_read_files",
+  session = session,
+  roots = sf_volumes
+)
 
 output$report_r <- renderUI({
   tagList(
@@ -224,7 +222,7 @@ output$report_r <- renderUI({
         td(uiOutput("ui_r_save_type")),
         td(conditional_save_report("r_save"), style = "padding-top:5px;"),
         td(uiOutput("ui_r_load"), style = "padding-top:5px;"),
-        td(conditional_read_files("r_read_files"), style = "padding-top:5px;"),
+        td(conditional_read_files("r_read_files", on_server()), style = "padding-top:5px;"),
         td(actionButton("r_clear", "Clear output", icon = icon("trash"), class = "btn-danger"), style = "padding-top:5px;")
       )
     ),
@@ -376,7 +374,7 @@ download_handler(
 observeEvent(input$r_load, {
 
   ## loading report from disk
-  if (getOption("radiant.shinyFiles", FALSE)) {
+  if (on_server()) {
     if (is.integer(input$r_load)) return()
     inFile <- shinyFiles::parseFilePaths(sf_volumes, input$r_load)
     if (nrow(inFile) == 0) return()
@@ -405,7 +403,7 @@ observeEvent(input$r_load, {
       }
     } else {
       rmd <- paste0(readLines(pp$path), collapse = "\n")
-      if (getOption("radiant.shinyFiles", FALSE)) {
+      if (on_server()) {
         r_state$radiant_r_name <<- pp$path
       } else {
         r_state$radiant_r_name <<- pp$filename

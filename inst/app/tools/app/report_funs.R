@@ -1,10 +1,11 @@
 file_upload_button <- function(
   inputId, label = "", multiple = FALSE,
   accept = NULL, buttonLabel = "Load", title = "Load data",
-  class = "", icn = "upload", progress = FALSE
+  class = "", icn = "upload", progress = FALSE,
+  on_server = FALSE
 ) {
 
-  if (getOption("radiant.shinyFiles", FALSE)) {
+  if (on_server %||% FALSE) {
     shinyFiles::shinyFileChoose(
       input = input,
       id = inputId,

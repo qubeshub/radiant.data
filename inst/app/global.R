@@ -1,3 +1,6 @@
+# Defaults for NULL values
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
 ## based on https://github.com/rstudio/shiny/issues/1237
 suppressWarnings(
   try(
@@ -8,26 +11,16 @@ suppressWarnings(
 
 ## set volumes if sf_volumes was preset (e.g., on a server) or
 ## we are running in Rstudio or if we are running locally
-if (isTRUE(getOption("radiant.sf_volumes", "") != "") ||
-    isTRUE(Sys.getenv("RSTUDIO") != "") ||
-    isTRUE(Sys.getenv("SHINY_PORT") == "")) {
-
-  if (isTRUE(getOption("radiant.sf_volumes", "") == "")) {
-    sf_volumes <- c(Home = radiant.data::find_home())
-    if (dir.exists(paste0(sf_volumes["Home"], "/Desktop"))) {
-      sf_volumes <- c(sf_volumes, Desktop = paste0(sf_volumes["Home"], "/Desktop"))
-    }
-    Dropbox <- try(radiant.data::find_dropbox(), silent = TRUE)
-    if (!inherits(Dropbox, "try-error")) {
-      sf_volumes <- c(sf_volumes, Dropbox = Dropbox)
-    }
-    sf_volumes <- c(sf_volumes, shinyFiles::getVolumes()())
-    options(radiant.sf_volumes = sf_volumes)
-  }
-  options(radiant.shinyFiles = TRUE)
-} else {
-  options(radiant.shinyFiles = FALSE)
+sf_volumes <- c(Home = radiant.data::find_home())
+if (dir.exists(paste0(sf_volumes["Home"], "/Desktop"))) {
+  sf_volumes <- c(sf_volumes, Desktop = paste0(sf_volumes["Home"], "/Desktop"))
 }
+Dropbox <- try(radiant.data::find_dropbox(), silent = TRUE)
+if (!inherits(Dropbox, "try-error")) {
+  sf_volumes <- c(sf_volumes, Dropbox = Dropbox)
+}
+sf_volumes <- c(sf_volumes, shinyFiles::getVolumes()())
+options(radiant.sf_volumes = sf_volumes)
 
 ## determining how radiant was launched
 ## should this be set in global?
@@ -371,34 +364,6 @@ navbar_proj <- function(navbar) {
   )
 
   navbar
-}
-
-if (getOption("radiant.shinyFiles", FALSE)) {
-  if (radiant.data::is_empty(getOption("radiant.launch_dir"))) {
-    if (radiant.data::is_empty(getOption("radiant.project_dir"))) {
-      options(radiant.launch_dir = radiant.data::find_home())
-      options(radiant.project_dir = getOption("radiant.launch_dir"))
-    } else {
-      options(radiant.launch_dir = getOption("radiant.project_dir"))
-    }
-  }
-
-  if (radiant.data::is_empty(getOption("radiant.project_dir"))) {
-    options(radiant.project_dir = getOption("radiant.launch_dir"))
-  }
-
-  dbdir <- try(radiant.data::find_dropbox(), silent = TRUE)
-  dbdir <- if (inherits(dbdir, "try-error")) "" else paste0(dbdir, "/")
-  options(radiant.dropbox_dir = dbdir)
-  rm(dbdir)
-
-  gddir <- try(radiant.data::find_gdrive(), silent = TRUE)
-  gddir <- if (inherits(gddir, "try-error")) "" else paste0(gddir, "/")
-  options(radiant.gdrive_dir = gddir)
-  rm(gddir)
-} else {
-  options(radiant.launch_dir = radiant.data::find_home())
-  options(radiant.project_dir = getOption("radiant.launch_dir"))
 }
 
 ## formatting data.frames printed in Report > Rmd and Report > R

@@ -431,72 +431,104 @@ returnTextInput <- function(
   )
 }
 
-if (getOption("radiant.shinyFiles", FALSE)) {
-  download_link <- function(id) {
-    uiOutput(paste0("ui_", id))
-  }
+on_server <- reactive({
+  ifelse((input$on_server %||% "FALSE") == "FALSE", FALSE, TRUE)
+})
 
-  download_button <- function(id, ...) {
-    uiOutput(paste0("ui_", id))
-  }
+download_link <- function(id) {
+  uiOutput(paste0("ui_", id))
+}
 
-  download_handler <- function(
-    id, label = "", fun = id, fn, type = "csv", caption = "Save to csv",
-    class = "", ic = "download", btn = "link", ...
-  ) {
-    ## create observer
-    shinyFiles::shinyFileSave(input, id, roots = sf_volumes, session = session)
+download_button <- function(id) {
+  uiOutput(paste0("ui_", id))
+}
 
-    ## create renderUI
-    if (btn == "link") {
-      output[[paste0("ui_", id)]] <- renderUI({
-        if (is.function(fn)) fn <- fn()
-        if (is.function(type)) type <- type()
+download_handler <- function(
+  id, label = "", fun = id, fn, type = "csv", caption = "Save to csv",
+  class = "", ic = "download", btn = "link", ...
+) {
+  ### Server
+
+  ## create observer
+  shinyFiles::shinyFileSave(input, id, roots = sf_volumes, session = session)
+
+  ## create renderUI
+  if (btn == "link") {
+    output[[paste0("ui_", id)]] <- renderUI({
+      if (is.function(fn)) fn <- fn()
+      if (is.function(type)) type <- type()
+      if (on_server()) {
         shinyFiles::shinySaveLink(
           id, label, caption, filename = fn, filetype = type,
           class = "alignright", icon = icon(ic)
         )
-      })
-    } else {
-      output[[paste0("ui_", id)]] <- renderUI({
-        if (is.function(fn)) fn <- fn()
-        if (is.function(type)) type <- type()
+      } else {
+        downloadLink(id, "", class = "fa fa-download alignright")
+      }
+    })
+  } else {
+    output[[paste0("ui_", id)]] <- renderUI({
+      if (is.function(fn)) fn <- fn()
+      if (is.function(type)) type <- type()
+      if (on_server()) {
         shinyFiles::shinySaveButton(
           id, label, caption, filename = fn, filetype = type,
           class = class, icon = icon("download")
         )
-      })
-    }
-
-    observeEvent(input[[id]], {
-      if (is.integer(input[[id]])) return()
-      path <-  shinyFiles::parseSavePath(sf_volumes, input[[id]])
-      if (!inherits(path, "try-error") && !is_empty(path$datapath)) {
-        fun(path$datapath, ...)
+      } else {
+        downloadButton(id, label, class = class)
       }
     })
   }
-} else {
-  download_link <- function(id) {
-    downloadLink(id, "", class = "fa fa-download alignright")
-  }
-  download_button <- function(id, label = "Save", ic = "download", class = "", ...) {
-    downloadButton(id, label, class = class)
-  }
-  download_handler <- function(
-    id, label = "", fun = id, fn, type = "csv", caption = "Save to csv",
-    class = "", ic = "download", btn = "link", ...
-  ) {
-    output[[id]] <- downloadHandler(
-      filename = function() {
-        if (is.function(fn)) fn <- fn()
-        if (is.function(type)) type <- type()
-        paste0(fn, ".", type)
-      },
-      content = function(path) { fun(path, ...) }
-    )
-  }
+
+  observeEvent(input[[id]], {
+    if (is.integer(input[[id]])) return()
+    path <-  shinyFiles::parseSavePath(sf_volumes, input[[id]])
+    if (!inherits(path, "try-error") && !is_empty(path$datapath)) {
+      fun(path$datapath, ...)
+    }
+  })
+
+  ### Client
+  output[[id]] <- downloadHandler(
+    filename = function() {
+      if (is.function(fn)) fn <- fn()
+      if (is.function(type)) type <- type()
+      paste0(fn, ".", type)
+    },
+    content = function(path) { fun(path, ...) }
+  )
 }
+
+observeEvent(on_server(), {
+  if (on_server()) {
+    if (radiant.data::is_empty(getOption("radiant.launch_dir"))) {
+      if (radiant.data::is_empty(getOption("radiant.project_dir"))) {
+        options(radiant.launch_dir = radiant.data::find_home())
+        options(radiant.project_dir = getOption("radiant.launch_dir"))
+      } else {
+        options(radiant.launch_dir = getOption("radiant.project_dir"))
+      }
+    }
+
+    if (radiant.data::is_empty(getOption("radiant.project_dir"))) {
+      options(radiant.project_dir = getOption("radiant.launch_dir"))
+    }
+
+    dbdir <- try(radiant.data::find_dropbox(), silent = TRUE)
+    dbdir <- if (inherits(dbdir, "try-error")) "" else paste0(dbdir, "/")
+    options(radiant.dropbox_dir = dbdir)
+    rm(dbdir)
+
+    gddir <- try(radiant.data::find_gdrive(), silent = TRUE)
+    gddir <- if (inherits(gddir, "try-error")) "" else paste0(gddir, "/")
+    options(radiant.gdrive_dir = gddir)
+    rm(gddir)
+  } else {
+    options(radiant.launch_dir = radiant.data::find_home())
+    options(radiant.project_dir = getOption("radiant.launch_dir"))
+  }
+}, ignoreNULL = FALSE)
 
 plot_width <- function() {
   if (is.null(input$viz_plot_width)) r_info[["plot_width"]] else input$viz_plot_width
